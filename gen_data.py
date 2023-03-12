@@ -7,7 +7,8 @@ if __name__ == '__main__':
     """Parameters"""
     parser = argparse.ArgumentParser(description="Generate dataset file")
     parser.add_argument("--datadir", help='Data directory', default='../../../Data/KEMD/KEMDy20_v1_1/')
-    parser.add_argument("--output", help='Output file name', default='kemd20.txt')
+    parser.add_argument("--outdata", help='Output data file name', default='train_data.tsv')
+    parser.add_argument("--outlabel", help='Output laebl file name', default='train_labels.csv')
 
     args = parser.parse_args()
 
@@ -22,7 +23,7 @@ if __name__ == '__main__':
 
     for file in label_files:
         label_path = label_dir + file
-        with open(label_path, 'r', encoding='utf-8') as f:
+        with open(label_path, 'r') as f:
             lines = f.readlines()[2:]
 
         utterances = []
@@ -34,6 +35,7 @@ if __name__ == '__main__':
             session =  segment[4:6]
             script = segment[13:15]
             user = segment[20:24]
+            scene = segment[:15]
 
             if prev_script != script:
                 conversations.append(utterances)
@@ -42,17 +44,24 @@ if __name__ == '__main__':
 
 
             transcript_file = "{}/Session{}/{}.txt".format(input_dir, session, segment)
-            with open(transcript_file, 'r') as f:
+            with open(transcript_file, 'r', errors='ignore') as f:
                 utterance = f.readlines()[0].strip()
 
-            utterances.append({'speaker': user, 'utterance': utterance, 'emotion': label})
+            utterances.append({'id': segment, 'person': user, 'sentence': utterance, 'scene': scene, 'emotion': label})
 
         conversations.append(utterances)
 
-    with open(args.output, 'w') as f:
+    with open(args.outdata, 'w') as f:
+        f.write('sentence_id\tperson\tsentence\tscene\n')
         for conversation in conversations:
             for utterance in conversation:
-                line = "{}\t{}\t{}\n".format(utterance['speaker'], utterance['utterance'], utterance['emotion'])
+                line = "{}\t{}\t{}\t{}\n".format(utterance['id'], utterance['person'], utterance['sentence'], utterance['scene'])
                 f.write(line)
-            f.write("\n")
+
+    with open(args.outlabel, 'w') as f:
+        f.write('sentence_id,label\n')
+        for conversation in conversations:
+            for utterance in conversation:
+                line = "{},{}\n".format(utterance['id'], utterance['emotion'])
+                f.write(line)
 
